@@ -1,13 +1,14 @@
 /* RackTables Inline Files - client side.
  *
- * - Every download link (?module=download&file_id=N) opens in a new tab.
- * - Links to images open in an in-page viewer instead: Esc or a click on the
- *   backdrop closes it, Left/Right arrows move between images on the page.
+ * - Download icons (?module=download&file_id=N) open the original file in a new tab.
+ * - Image previews ("click to zoom", ?module=download&...&asattach=no around an
+ *   <img>) open in an in-page viewer: Esc or a click on the backdrop closes it,
+ *   Left/Right arrows move between all images on the page.
  * - Ctrl/Cmd/Shift/middle click keeps the browser's default behavior.
  *
- * The file type is taken from the file name shown next to the link
- * (?page=file&file_id=N), or from the "Type:" row on the file's own page.
- * Links whose type cannot be determined simply open in a new tab.
+ * Which files on the page are images (for prev/next) is taken from the bold
+ * file name in file cells (<a href="?page=file&file_id=N"><strong>name</strong></a>)
+ * and, on a file's own page, from the "Type:" row of the summary.
  */
 (function () {
   'use strict';
@@ -24,22 +25,36 @@
     return a && a.tagName === 'A' && param(a, 'module') === 'download' && param(a, 'file_id') !== null;
   }
 
-  // file_id -> {name, image}
+  // "Click to zoom" link of a resampled image preview. RackTables only
+  // generates it for images, so no type detection is needed.
+  function isPreviewLink(a) {
+    return isDownloadLink(a) && param(a, 'asattach') === 'no' && !!a.querySelector('img');
+  }
+
+  function downloadUrl(id) {
+    return 'index.php?module=download&file_id=' + encodeURIComponent(id);
+  }
+
+  // file_id -> {name, image}. Only the bold file name counts: other links to
+  // the same file (tabs such as "Browse" or "Download", the icon) are ignored.
   function collectFiles() {
     var files = {};
-    Array.prototype.forEach.call(document.querySelectorAll('a[href*="page=file"][href*="file_id="]'), function (a) {
+    Array.prototype.forEach.call(document.querySelectorAll('a[href*="page=file"][href*="file_id="] > strong'), function (s) {
+      var a = s.parentNode;
       var id = param(a, 'file_id');
-      var name = (a.textContent || '').trim();
-      if (id && name && param(a, 'module') === null)
+      var name = (s.textContent || '').trim();
+      if (id && name && param(a, 'module') === null && param(a, 'tab') === null)
         files[id] = { name: name, image: IMAGE_EXT.test(name) };
     });
-    // On the file's own page the name is not a link, but the summary has "Type:".
+    // On the file's own page the "Type:" row of the summary is authoritative.
     var pageId = /[?&]page=file(&|$)/.test(location.search) ? (/[?&]file_id=(\d+)/.exec(location.search) || [])[1] : null;
-    if (pageId && !files[pageId]) {
+    if (pageId) {
       Array.prototype.forEach.call(document.querySelectorAll('th'), function (th) {
         if ((th.textContent || '').trim() === 'Type:' && th.nextElementSibling) {
           var mime = (th.nextElementSibling.textContent || '').trim();
-          files[pageId] = { name: document.title || ('file ' + pageId), image: IMAGE_MIME.test(mime) };
+          var h1 = document.querySelector('h1');
+          var name = (h1 && h1.textContent.trim()) || ('file ' + pageId);
+          files[pageId] = { name: name, image: IMAGE_MIME.test(mime) };
         }
       });
     }
@@ -48,27 +63,25 @@
 
   var files = {};
 
-  function fileOf(a) {
-    var id = param(a, 'file_id');
-    var f = files[id];
-    // The resampled preview ("click to zoom") wraps an <img>: always an image.
-    if (!f && a.querySelector('img') && param(a, 'asattach') === 'no')
-      f = { name: 'file ' + id, image: true };
-    return f ? { id: id, name: f.name, image: f.image, href: a.href } : null;
-  }
-
-  // Unique image links on the page, in document order (for prev/next).
+  // All images on the page, in document order (for prev/next): files known to
+  // be images plus anything that has a zoomable preview.
   function imageList() {
     var seen = {};
     var list = [];
-    Array.prototype.forEach.call(document.querySelectorAll('a[href*="module=download"]'), function (a) {
-      if (!isDownloadLink(a)) return;
-      var f = fileOf(a);
-      if (f && f.image && !seen[f.id]) {
-        seen[f.id] = true;
-        list.push(f);
-      }
+    function add(id) {
+      if (seen[id]) return;
+      seen[id] = true;
+      var f = files[id];
+      list.push({ id: id, name: f ? f.name : 'file ' + id, href: downloadUrl(id) });
+    }
+    Array.prototype.forEach.call(document.querySelectorAll('a[href*="file_id="]'), function (a) {
+      var id = param(a, 'file_id');
+      if (!id) return;
+      if (isPreviewLink(a) || (files[id] && files[id].image && (isDownloadLink(a) || param(a, 'page') === 'file')))
+        add(id);
     });
+    // File page whose preview is too small to be zoomable: still list it.
+    Object.keys(files).forEach(function (id) { if (files[id].image) add(id); });
     return list;
   }
 
@@ -168,13 +181,13 @@
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     var a = e.target.closest ? e.target.closest('a') : null;
     if (!isDownloadLink(a)) return;
-    var f = fileOf(a);
-    if (f && f.image) {
+    if (isPreviewLink(a)) {
+      var id = param(a, 'file_id');
       e.preventDefault();
-      show(f);
+      show({ id: id, name: files[id] ? files[id].name : 'file ' + id, href: downloadUrl(id) });
       return;
     }
-    a.target = '_blank'; // everything else: new tab (the default action follows)
+    a.target = '_blank'; // download icon: original file in a new tab (default action follows)
     a.rel = 'noopener';
   });
 

@@ -4,10 +4,10 @@ A [RackTables](https://www.racktables.org/) plugin that makes attached files eas
 
 - **PDFs, images and plain text open in the browser** instead of being downloaded.
   Other types (zip, office documents, configs, ...) are still downloaded.
-- **Download links open in a new tab**, so you do not lose the page you were on.
-- **Images open in an in-page viewer** with previous/next navigation across all images
-  on the page (handy for rack photos). Esc or a click outside closes it, Left/Right
-  arrows switch images, "Open in new tab" shows the original.
+- **Download icons open the file in a new tab**, so you do not lose the page you were on.
+- **Image previews ("click to zoom") open in an in-page viewer** with previous/next
+  navigation across all images on the page (handy for rack photos). Esc or a click
+  outside closes it, Left/Right arrows switch images, "Open in new tab" shows the original.
 - **File names with spaces and non-ASCII characters** are preserved when saving
   (RFC 5987 `filename*`).
 
@@ -57,10 +57,10 @@ script in the RackTables origin. Requests with `asattach=no` (RackTables' own im
 zoom link) are left untouched.
 
 **Client side.** `js/inlinefiles.js` (plain JavaScript, no dependencies) sets
-`target=_blank` on download links and intercepts clicks on image links. The file type is
-taken from the file name shown next to the link, or from the "Type:" row on a file's own
-page; links whose type cannot be determined just open in a new tab. Ctrl/Cmd/Shift/middle
-click keeps the browser's default behavior.
+`target=_blank` on download links and opens the viewer for image previews (the
+"click to zoom" link RackTables renders around a resampled preview). For previous/next,
+images on the page are found from the bold file names in file cells and, on a file's own
+page, from the "Type:" row. Ctrl/Cmd/Shift/middle click keeps the browser's default behavior.
 
 ## License
 

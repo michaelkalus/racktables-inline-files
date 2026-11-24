@@ -18,7 +18,7 @@ function plugin_inlinefiles_info ()
 	(
 		'name' => 'inlinefiles',
 		'longname' => 'Inline Files',
-		'version' => '1.0.0',
+		'version' => '1.0.1',
 		'home_url' => '',
 	);
 }
