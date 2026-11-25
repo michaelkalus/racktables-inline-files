@@ -13,6 +13,18 @@ A [RackTables](https://www.racktables.org/) plugin that makes attached files eas
 
 No RackTables core file is modified.
 
+## Screenshots
+
+Taken on a demo instance with generated data (shown with the Redesign Theme).
+
+**Image preview opened in the in-page viewer** (previous / next across the page, Esc closes):
+
+![Image viewer](screenshots/image-viewer.png)
+
+**Files on a rack page** ("click to zoom" opens the viewer, file links open in a new tab):
+
+![Rack files](screenshots/rack-files.png)
+
 ## Compatibility
 
 Tested with RackTables **0.22.0** (PHP 8.3). Should work with 0.21.x (same plugin
